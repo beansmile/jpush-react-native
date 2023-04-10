@@ -27,6 +27,9 @@
 
 #define ALIAS       @"alias"
 
+//properties
+#define PROS        @"pros"
+
 //地理围栏
 #define GEO_FENCE_ID         @"geoFenceID"
 #define GEO_FENCE_MAX_NUMBER @"geoFenceMaxNumber"
@@ -46,6 +49,8 @@
 #define CONNECT_EVENT             @"ConnectEvent"
 //tag alias
 #define TAG_ALIAS_EVENT           @"TagAliasEvent"
+//properties
+#define PROPERTIES_EVENT           @"PropertiesEvent"
 //phoneNumber
 #define MOBILE_NUMBER_EVENT       @"MobileNumberEvent"
 
@@ -117,6 +122,40 @@ RCT_EXPORT_METHOD(setDebugMode: (BOOL *)enable)
     if(enable){
         [JPUSHService setDebugMode];
     }
+}
+
+RCT_EXPORT_METHOD(setupWithConfig:(NSDictionary *)params)
+{
+    if (params[@"appKey"] && params[@"channel"] && params[@"production"]) {
+           // JPush初始化配置
+           NSMutableDictionary *launchOptions = [NSMutableDictionary dictionaryWithDictionary:self.bridge.launchOptions];
+           [JPUSHService setupWithOption:launchOptions appKey:params[@"appKey"]
+                                 channel:params[@"channel"] apsForProduction:[params[@"production"] boolValue]];
+
+           dispatch_async(dispatch_get_main_queue(), ^{
+               // APNS
+               JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
+               if (@available(iOS 12.0, *)) {
+                 entity.types = JPAuthorizationOptionAlert|JPAuthorizationOptionBadge|JPAuthorizationOptionSound|JPAuthorizationOptionProvidesAppNotificationSettings;
+               }
+               [JPUSHService registerForRemoteNotificationConfig:entity delegate:self.bridge.delegate];
+               [launchOptions objectForKey: UIApplicationLaunchOptionsRemoteNotificationKey];
+               // 自定义消息
+               NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
+               [defaultCenter addObserver:self.bridge.delegate selector:@selector(networkDidReceiveMessage:) name:kJPFNetworkDidReceiveMessageNotification object:nil];
+               // 地理围栏
+               [JPUSHService registerLbsGeofenceDelegate:self.bridge.delegate withLaunchOptions:launchOptions];
+           });
+
+           NSMutableArray *notificationList = [RCTJPushEventQueue sharedInstance]._notificationQueue;
+           if(notificationList.count) {
+               [self sendApnsNotificationEventByDictionary:notificationList[0]];
+           }
+           NSMutableArray *localNotificationList = [RCTJPushEventQueue sharedInstance]._localNotificationQueue;
+           if(localNotificationList.count) {
+               [self sendLocalNotificationEventByDictionary:localNotificationList[0]];
+           }
+       }
 }
 
 RCT_EXPORT_METHOD(loadJS)
@@ -247,6 +286,38 @@ RCT_EXPORT_METHOD(getAlias:(NSDictionary *)params) {
     } seq:sequence];
 }
 
+//properties
+RCT_EXPORT_METHOD(setProperties:(NSDictionary *)params) {
+     if(params[PROS]){
+         NSDictionary *properties = params[PROS];
+        NSInteger sequence = params[SEQUENCE]?[params[SEQUENCE] integerValue]:-1;
+         [JPUSHService setProperties:properties completion:^(NSInteger iResCode, NSDictionary *properties, NSInteger seq) {
+             NSDictionary *data = @{CODE:@(iResCode),SEQUENCE:@(seq),PROS:properties};
+             [self sendPropertiesEvent:data];
+         } seq:sequence];
+     }
+}
+
+RCT_EXPORT_METHOD(deleteProperties:(NSDictionary *)params) {
+    if(params[PROS]){
+        NSDictionary *properties = params[PROS];
+        NSSet *set = [NSSet setWithArray:properties.allKeys];
+        NSInteger sequence = params[SEQUENCE]?[params[SEQUENCE] integerValue]:-1;
+        [JPUSHService deleteProperties:set completion:^(NSInteger iResCode, NSDictionary *properties, NSInteger seq) {
+            NSDictionary *data = @{CODE:@(iResCode),SEQUENCE:@(seq), PROS:properties};
+            [self sendTagAliasEvent:data];
+        } seq:sequence];
+    }
+}
+
+RCT_EXPORT_METHOD(cleanProperties:(NSDictionary *)params) {
+    NSInteger sequence = params[SEQUENCE]?[params[SEQUENCE] integerValue]:-1;
+    [JPUSHService cleanProperties:^(NSInteger iResCode, NSDictionary *properties, NSInteger seq) {
+        NSDictionary *data = @{CODE:@(iResCode),SEQUENCE:@(seq),PROS:properties};
+        [self sendTagAliasEvent:data];
+    } seq:sequence];
+}
+
 //badge 角标
 RCT_EXPORT_METHOD(setBadge:(NSDictionary *)params)
 {
@@ -262,6 +333,15 @@ RCT_EXPORT_METHOD(setBadge:(NSDictionary *)params)
             [UIApplication sharedApplication].applicationIconBadgeNumber = [number integerValue];
         });
     }
+}
+
+//Properties
+- (void)sendPropertiesEvent:(NSDictionary *)data
+{
+    [self.bridge enqueueJSCall:@"RCTDeviceEventEmitter"
+                        method:@"emit"
+                          args:@[PROPERTIES_EVENT, data]
+                    completion:NULL];
 }
 
 //设置手机号码

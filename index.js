@@ -11,7 +11,7 @@ const ConnectEvent           = 'ConnectEvent'            //连接状态
 const NotificationEvent      = 'NotificationEvent'       //通知事件
 const LocalNotificationEvent = 'LocalNotificationEvent'  //本地通知事件
 const CustomMessageEvent     = 'CustomMessageEvent'      //自定义消息事件
-const TagAliasEvent          = 'TagAliasEvent'           //TagAlias事件
+const TagAliasEvent          = 'TagAliasEvent'           //TagAlias/Pros事件
 const MobileNumberEvent      = 'MobileNumberEvent'       //电话号码事件
 
 export default class JPush {
@@ -28,14 +28,14 @@ export default class JPush {
 
     /*
     * 初始化推送服务
-    *
+    * {"appKey":"","channel":"dev","production":1}
     * 请在componentDidMount()调用init，否则会影响通知点击事件的回调
     * */
-    static init() {
+    static init(params) {
         if (Platform.OS == "android") {
             JPushModule.init()
         } else {
-            JPushModule.loadJS()
+            JPushModule.setupWithConfig(params)
         }
     }
 
@@ -223,7 +223,36 @@ export default class JPush {
             JPushModule.getAlias(params)
         }
     }
-
+   /*
+    * 设置推送个性化属性/更新用户指定推送个性化属性
+    * */
+    static setProperties(params) {
+        if (Platform.OS == "android") {
+            JPushModule.setProperties(params)
+        } else {
+            JPushModule.setProperties(params)
+        }
+    }
+    /*
+    * 删除指定推送个性化属性
+    * */
+    static deleteProperties(params) {
+        if (Platform.OS == "android") {
+            JPushModule.deleteProperties(params)
+        } else {
+            JPushModule.deleteProperties(params)
+        }
+    }
+    /*
+    * 清除所有推送个性化属性
+    * */
+    static cleanProperties() {
+        if (Platform.OS == "android") {
+            JPushModule.cleanProperties()
+        } else {
+            JPushModule.cleanProperties()
+        }
+    }
     //***************************************统计***************************************
 
     /*
@@ -597,6 +626,7 @@ export default class JPush {
         }
     }
 
+
     //***************************************iOS Only***************************************
 
     /*
@@ -612,6 +642,8 @@ export default class JPush {
     static setBadge(params) {
         if (Platform.OS == "ios") {
             JPushModule.setBadge(params)
+        }else if (Platform.OS == "android") {
+            JPushModule.setBadgeNumber(params)
         }
     }
 

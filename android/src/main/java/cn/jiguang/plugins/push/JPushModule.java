@@ -14,10 +14,12 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
 import com.facebook.react.bridge.WritableMap;
 
 import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -94,7 +96,19 @@ public class JPushModule extends ReactContextBaseJavaModule {
             JPushInterface.setChannel(reactContext, channel);
         }
     }
-
+    @ReactMethod
+    public void setBadgeNumber(ReadableMap readableMap) {
+        if (readableMap == null) {
+            JLogger.w(JConstants.PARAMS_NULL);
+            return;
+        }
+        if (readableMap.hasKey(JConstants.BADGE_NUMBER)) {
+            int number = readableMap.getInt(JConstants.BADGE_NUMBER);
+            JPushInterface.setBadgeNumber(reactContext,number);
+        } else {
+            JLogger.w("there are no " + JConstants.BADGE_NUMBER);
+        }
+    }
     @ReactMethod
     public void setPushTime(ReadableMap readableMap) {
         if (readableMap == null) {
@@ -201,7 +215,48 @@ public class JPushModule extends ReactContextBaseJavaModule {
             JLogger.w("there are no " + JConstants.TAGS);
         }
     }
+    @ReactMethod
+    public void setProperties(ReadableMap readableMap) {
+        if (readableMap == null) {
+            JLogger.w(JConstants.PARAMS_NULL);
+            return;
+        }
+        if (readableMap.hasKey(JConstants.PROPERTIES)) {
+            int sequence = readableMap.getInt(JConstants.SEQUENCE);
+            ReadableMap readMap = readableMap.getMap(JConstants.PROPERTIES);
+            ReadableNativeMap map= (ReadableNativeMap) readMap;
+            HashMap properties=map.toHashMap();
+            JPushInterface.setProperties(reactContext,sequence,properties);
+        } else {
+            JLogger.w("there are no " + JConstants.PROPERTIES);
+        }
+    }
+    @ReactMethod
+    public void deleteProperties(ReadableMap readableMap) {
+        if (readableMap == null) {
+            JLogger.w(JConstants.PARAMS_NULL);
+            return;
+        }
+        if (readableMap.hasKey(JConstants.PROPERTIES)) {
+            int sequence = readableMap.getInt(JConstants.SEQUENCE);
+            ReadableMap readMap = readableMap.getMap(JConstants.PROPERTIES);
+            ReadableNativeMap map= (ReadableNativeMap) readMap;
+            HashMap properties=map.toHashMap();
+            JPushInterface.deleteProperties(reactContext,sequence,properties);
+        } else {
+            JLogger.w("there are no " + JConstants.PROPERTIES);
+        }
 
+    }
+    @ReactMethod
+    public void cleanProperties(ReadableMap readableMap) {
+        if (readableMap == null) {
+            JLogger.w(JConstants.PARAMS_NULL);
+            return;
+        }
+        int sequence = readableMap.getInt(JConstants.SEQUENCE);
+        JPushInterface.cleanProperties(reactContext,sequence);
+    }
     @ReactMethod
     public void setTags(ReadableMap readableMap) {
         if (readableMap == null) {
